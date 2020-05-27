@@ -140,7 +140,7 @@ case "$image" in
     ANDROID=yes
     ANDROID_NDK_VERSION=r19c
     GRADLE_VERSION=4.10.3
-    CMAKE_VERSION=3.7.0
+    CMAKE_VERSION=3.12
     NINJA_VERSION=1.9.0
     ;;
   pytorch-linux-xenial-py3.6-clang7)
@@ -190,7 +190,7 @@ case "$image" in
     VISION=yes
     ROCM=yes
     # newer cmake version required
-    CMAKE_VERSION=3.6.3
+    CMAKE_VERSION=3.12
     ;;
 esac
 
