@@ -10,6 +10,7 @@ from torch.jit._recursive import wrap_cpp_module
 class QuantType(enum.IntEnum):
     DYNAMIC = 0
     STATIC = 1
+    QAT = 2
 
 def _check_is_script_module(model):
     if not isinstance(model, torch.jit.ScriptModule):
@@ -56,7 +57,8 @@ def _prepare_jit(model, qconfig_dict, inplace=False, quant_type=QuantType.STATIC
     if not all(isinstance(x, str) for x in qconfig_dict.keys()):
         raise ValueError('qconfig_dict should only contain names(str) as keys.')
     scripted_qconfig_dict = script_qconfig_dict(qconfig_dict)
-    model = fuse_conv_bn_jit(model, inplace)
+    if quant_type != QuantType.QAT:
+        model = fuse_conv_bn_jit(model, inplace)
     model_c = torch._C._jit_pass_insert_observers(model._c,
                                                   'forward',
                                                   scripted_qconfig_dict,
@@ -73,6 +75,10 @@ def prepare_jit(model, qconfig_dict, inplace=False):
 
 def prepare_dynamic_jit(model, qconfig_dict, inplace=False):
     return _prepare_jit(model, qconfig_dict, inplace, quant_type=QuantType.DYNAMIC)
+
+# Note: in development, not ready for use
+def prepare_qat_jit(model, qconfig_dict, inplace=False):
+    return _prepare_jit(model, qconfig_dict, inplace, quant_type=QuantType.QAT)
 
 def _convert_jit(model, inplace=False, debug=False, quant_type=QuantType.STATIC):
     _check_is_script_module(model)

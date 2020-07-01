@@ -23,6 +23,7 @@ from torch.quantization import (
     fuse_modules,
     quantize_jit,
     quantize_dynamic_jit,
+    default_qat_qconfig,
 )
 
 # torch.quantization.quantize_jit
@@ -33,6 +34,7 @@ from torch.quantization.quantize_jit import (
     prepare_jit,
     prepare_dynamic_jit,
     script_qconfig,
+    prepare_qat_jit,
 )
 
 # Testing utils
@@ -2953,3 +2955,29 @@ class TestQuantizeJit(QuantizationTestCase):
                     qconfig_dict,
                     debug=True)
                 self.assertEqual(model_fake_quantized(self.calib_data[0][0]), result_eager)
+
+class TestQuantizeQATJit(QuantizationTestCase):
+
+    def test_prepare_qat(self):
+        class M(torch.nn.Module):
+            def __init__(self):
+                super(M, self).__init__()
+                self.conv = torch.nn.Conv2d(1, 1, 1)
+                self.bn = torch.nn.BatchNorm2d(1)
+
+            def forward(self, x):
+                x = self.conv(x)
+                x = self.bn(x)
+                return x
+
+        m = torch.jit.script(M())
+        m = prepare_qat_jit(m, {'': default_qat_qconfig})
+
+        # TODO(future PR): modify this as needed after we add QAT conv-bn logic
+        assert len(attrs_with_prefix(m, '_observer_')) == 2
+        assert len(attrs_with_prefix(m.conv, '_observer_')) == 1
+        FileCheck().check('FakeQuantize = prim::GetAttr[name="_observer_') \
+                   .check('prim::GetAttr[name="conv"]') \
+                   .check('prim::CallMethod') \
+                   .check_not('Observer = prim::GetAttr[name="_observer_') \
+                   .run(m.graph)

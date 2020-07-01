@@ -6,7 +6,7 @@ namespace jit {
 
 // Quantization type (dynamic quantization, static quantization).
 // Should match the Python enum in quantize_jit.py
-enum QuantType : uint8_t { DYNAMIC = 0, STATIC };
+enum QuantType : uint8_t { DYNAMIC = 0, STATIC, QAT };
 
 std::ostream& operator<<(std::ostream& os, QuantType t);
 

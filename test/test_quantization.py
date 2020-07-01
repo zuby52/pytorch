@@ -59,6 +59,7 @@ from quantization.test_quantize_jit import TestQuantizeJitPasses  # noqa: F401
 from quantization.test_quantize_jit import TestQuantizeJitOps  # noqa: F401
 from quantization.test_quantize_jit import TestQuantizeDynamicJitPasses  # noqa: F401
 from quantization.test_quantize_jit import TestQuantizeDynamicJitOps  # noqaa: F401
+from quantization.test_quantize_jit import TestQuantizeQATJit  # noqa: F401
 
 # Tooling: numric_suite
 from quantization.test_numeric_suite import TestEagerModeNumericSuite  # noqa: F401
