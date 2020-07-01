@@ -79,27 +79,33 @@ class _ConvBnNd(nn.modules.conv._ConvNd):
         self.bn.training = False
         return self
 
+    # Note: this should be kept in sync with
+    # torch/csrc/jit/passes/quantization/qat_combine_conv_bn.cpp
     def _forward(self, input):
         running_std = torch.sqrt(self.bn.running_var + self.bn.eps)
         scale_factor = self.bn.weight / running_std
-        scaled_weight = self.weight_fake_quant(self.weight * scale_factor.reshape([-1, 1, 1, 1]))
+        scaled_weight_no_fq = self.weight * scale_factor.reshape([-1, 1, 1, 1])
+        scaled_weight = self.weight_fake_quant(scaled_weight_no_fq)
 
         # this combines the logic in nn.Conv2d._conv_forward
-        # TODO before land: can remove nn.Conv2d._conv_forward, and
+        # TODO(future PR): can remove nn.Conv2d._conv_forward, and
         # improve this comment
-        padding = self.padding
+        # call conv with scaled weight, and get the unscaled result
         if self.padding_mode != 'zeros':
             input = F.pad(input, self._reversed_padding_repeated_twice,
                           mode=self.padding_mode)
-            padding = _pair(0)
-        # call conv with scaled weight, and get the unscaled result
-        conv_orig = \
-            torch.qat_conv2d_and_unscale(input, scaled_weight, scale_factor,
-                                         self.bias, self.stride, padding,
-                                         self.dilation, self.groups)
+            conv_res = \
+                torch.qat_conv2d_and_unscale(input, scaled_weight, scale_factor,
+                                             self.bias, self.stride, _pair(0),
+                                             self.dilation, self.groups)
+        else:
+            conv_res = \
+                torch.qat_conv2d_and_unscale(input, scaled_weight, scale_factor,
+                                             self.bias, self.stride, self.padding,
+                                             self.dilation, self.groups)
         # at this point the conv is unscaled, so can do BN as before
-        conv = self.bn(conv_orig)
-        return conv
+        bn_res = self.bn(conv_res)
+        return bn_res
 
     def extra_repr(self):
         # TODO(jerryzh): extend

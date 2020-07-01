@@ -57,7 +57,9 @@ def _prepare_jit(model, qconfig_dict, inplace=False, quant_type=QuantType.STATIC
     if not all(isinstance(x, str) for x in qconfig_dict.keys()):
         raise ValueError('qconfig_dict should only contain names(str) as keys.')
     scripted_qconfig_dict = script_qconfig_dict(qconfig_dict)
-    if quant_type != QuantType.QAT:
+    if quant_type == QuantType.QAT:
+        model = wrap_cpp_module(torch._C._jit_pass_qat_combine_convbn(model._c))
+    else:
         model = fuse_conv_bn_jit(model, inplace)
     model_c = torch._C._jit_pass_insert_observers(model._c,
                                                   'forward',
