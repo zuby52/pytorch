@@ -559,6 +559,7 @@ def get_testing_overrides():
         torch.ones_like: lambda input, dtype=None, layout=None, device=None, requires_grad=False: -1,
         torch.pow: lambda input, exponent, out=None: -1,
         torch.prod: lambda input: -1,
+        torch.qat_conv2d_and_unscale: lambda input, scaled_weight, scale_factor, bias, stride, padding, dilation, groups: -1,
         torch.q_per_channel_axis: lambda input: -1,
         torch.q_per_channel_scales: lambda input: -1,
         torch.q_per_channel_zero_points: lambda input: -1,
