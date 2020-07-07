@@ -191,28 +191,14 @@ DynamicQuantOps insertChooseQParamQuantDequant(
 }
 
 Node* insertFP16CastOps(Graph* graph, Value* observer_out) {
-  auto default_false = graph->insertConstant(false);
-  Value* none = graph->insertConstant(IValue());
-  Value* fp16_dtype = graph->insertConstant(IValue(c10::kHalf));
-  Value* float_dtype = graph->insertConstant(IValue(c10::kFloat));
-
-  std::vector<Value*> input_to_fp16 = {observer_out,
-                                       fp16_dtype,
-                                       /* non_blocking */ default_false,
-                                       /* copy */ default_false};
-  Node* cast_to_fp16 = graph->create(Symbol::aten("to"), input_to_fp16);
-  graph->insertNode(cast_to_fp16);
-
-  auto fp16_out = cast_to_fp16->output();
-  std::vector<Value*> input_to_fp32 = {fp16_out,
-                                       float_dtype,
-                                       /* non_blocking */ default_false,
-                                       /* copy */ default_false};
-  Node* cast_to_fp32 = graph->create(Symbol::aten("to"), input_to_fp32);
-  graph->insertNode(cast_to_fp32);
+  // If the weight value is outside of the range for FP16 range, i.e. [5.96e-8,
+  // 65504], we saturate the values to the min/max of this range.
+  Node* saturated_weight =
+      graph->create(Symbol::aten("_saturate_weight_to_fp16"), {observer_out});
+  graph->insertNode(saturated_weight);
   graph->lint();
 
-  return cast_to_fp32;
+  return saturated_weight;
 }
 
 bool isNoopObserver(Value* observer) {
@@ -246,8 +232,15 @@ void insertQuantizationOps(
   }
   Value* original_val = observer->input(1);
   Node *quant, *choose_qparams, *dequant;
+  bool has_dequant = true;
   if (quant_type == QuantType::DYNAMIC && isNoopObserver(observer->input(0))) {
-    dequant = insertFP16CastOps(g, observer_out);
+    // We don't need to insert cast operators for activation tensors for fp16
+    // quant.
+    if (isWeight(module, observer_out)) {
+      dequant = insertFP16CastOps(g, observer_out);
+    } else {
+      has_dequant = false;
+    }
   } else if (
       quant_type == QuantType::DYNAMIC && !isWeight(module, observer_out)) {
     Value* dtype = g->insertGetAttr(self, qparam_names.back());
@@ -269,8 +262,9 @@ void insertQuantizationOps(
     dequant = insertDeQuant(g, quant->output(), original_val);
   }
   observer_out->replaceAllUsesWith(original_val);
-
-  original_val->replaceAllUsesAfterNodeWith(dequant, dequant->output());
+  if (has_dequant) {
+    original_val->replaceAllUsesAfterNodeWith(dequant, dequant->output());
+  }
 }
 
 // find the observer for Value `v` and return the name of the observer
