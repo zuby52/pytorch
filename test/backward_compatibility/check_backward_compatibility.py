@@ -128,6 +128,7 @@ white_list = [
     ('aten::atan2', datetime.date(2020, 7, 30)),
     ('aten::copy_', datetime.date(2020, 7, 30)),
     ('aten::sort', datetime.date(2020, 7, 30)),
+    ('aten::mkldnn_convolution_backward_weights', datetime.date(2020, 7, 30)),
 ]
 
 
