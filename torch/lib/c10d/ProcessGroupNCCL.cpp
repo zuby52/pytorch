@@ -202,6 +202,12 @@ void ProcessGroupNCCL::WorkNCCL::checkAndThrowException() {
   }
 }
 
+void ProcessGroupNCCL::WorkNCCL::abortNCCLComms() {
+  for (const auto& ncclComm : ncclComms_) {
+    ncclComm->ncclCommAbort();
+  }
+}
+
 // Waiting on the work's corresponding CUDA events
 void ProcessGroupNCCL::WorkNCCL::synchronize() {
   for (size_t i = 0; i < devices_.size(); ++i) {
