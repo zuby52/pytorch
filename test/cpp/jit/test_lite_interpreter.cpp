@@ -4,6 +4,8 @@
 #include <torch/csrc/jit/api/module.h>
 #include <torch/csrc/jit/mobile/import.h>
 #include <torch/csrc/jit/mobile/module.h>
+#include <torch/csrc/jit/mobile/serializer.h>
+#include <torch/csrc/jit/mobile/deserializer.h>
 #include <torch/csrc/jit/serialization/import.h>
 #include <torch/custom_class.h>
 #include <torch/torch.h>
@@ -356,6 +358,41 @@ void testLiteInterpreterBuiltinFunction() {
   auto str = res.toStringRef();
   std::string expected = "Hello! Your tensor has 12 elements!";
   AT_ASSERT(str == expected);
+}
+
+void testSerializer() {
+  Module m("m");
+  m.register_parameter("foo", torch::ones({}), false);
+  m.register_parameter("foo2", 2*torch::ones({}), false);
+  m.define(R"(
+    def add_it(self, x):
+      b = 4
+      return self.foo + x + b
+  )");
+  Module m_child("mchild");
+  m_child.register_parameter("foochild", 3 * torch::ones({}), false);
+  m.register_module("child1", m_child);
+  std::stringstream ss;
+  std::stringstream ss2;
+
+  auto named_params = m.named_parameters();
+  std::cerr << "All named parameters: " << std::endl;
+  for (const auto& param : named_params) {
+    std::cerr << "name: " << param.name << std::endl;
+    std::cerr << "value: " << param.value << std::endl;
+  }
+
+  m._save_for_mobile(ss);
+  mobile::Module bc = _load_for_mobile(ss);
+  std::cerr << "parameter, orig: " << bc.parameters() << std::endl;
+
+  torch::jit::mobile::ExportModule(bc, "/Users/annshan/models/add2.bc", true);
+  std::vector<at::Tensor> mobile_params = torch::jit::_load_mobile_data("/Users/annshan/models/add2.bc");
+  std::cerr << "parameters, after (using file): " << mobile_params << std::endl;
+
+  torch::jit::mobile::ExportModule(bc, ss2, true);
+  mobile_params = torch::jit::_load_mobile_data(ss2);
+  std::cerr << "parameters, after (using stream): " << mobile_params << std::endl;
 }
 
 namespace {
