@@ -15240,6 +15240,7 @@ def add_autograd_test(
         self_size,
         args,
         variant_name='',
+        run_for_real_complex=(True, False),
         check_ad=(),
         dim_args_idx=(),
         skipTestIf=(),
@@ -15248,7 +15249,7 @@ def add_autograd_test(
 
     # Disable complex tests
     # TODO: Add complex support for jit
-    if 'complex' in variant_name:
+    if run_for_real_complex[1]:
         return
 
     basic_test_name = 'test_' + name
