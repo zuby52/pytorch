@@ -1,5 +1,7 @@
 #include <torch/csrc/distributed/rpc/rpc_agent.h>
 
+#include <c10/util/Logging.h>
+
 namespace torch {
 namespace distributed {
 namespace rpc {
@@ -236,14 +238,20 @@ const WorkerInfo& RpcAgent::getWorkerInfo() const {
   return workerInfo_;
 }
 
-std::shared_ptr<RpcAgent> RpcAgent::currentRpcAgent_ = nullptr;
+std::shared_ptr<RpcAgent>& getRefToCurrentRpcAgent() {
+  #ifdef C10_USE_GLOG
+    google::base::GetLogger(google::GLOG_ERROR);
+  #endif
+  static std::shared_ptr<RpcAgent> currentRpcAgent = nullptr;
+  return currentRpcAgent;
+}
 
 bool RpcAgent::isCurrentRpcAgentSet() {
-  return std::atomic_load(&currentRpcAgent_) != nullptr;
+  return std::atomic_load(&getRefToCurrentRpcAgent()) != nullptr;
 }
 
 std::shared_ptr<RpcAgent> RpcAgent::getCurrentRpcAgent() {
-  std::shared_ptr<RpcAgent> agent = std::atomic_load(&currentRpcAgent_);
+  std::shared_ptr<RpcAgent> agent = std::atomic_load(&getRefToCurrentRpcAgent());
   TORCH_INTERNAL_ASSERT(agent, "Current RPC agent is not set!");
   return agent;
 }
@@ -255,7 +263,7 @@ void RpcAgent::setCurrentRpcAgent(std::shared_ptr<RpcAgent> rpcAgent) {
     // that would trigger the assert just below. See:
     // https://en.cppreference.com/w/cpp/atomic/atomic_compare_exchange
     std::atomic_compare_exchange_strong(
-        &currentRpcAgent_, &previousAgent, std::move(rpcAgent));
+        &getRefToCurrentRpcAgent(), &previousAgent, std::move(rpcAgent));
     TORCH_INTERNAL_ASSERT(
         previousAgent == nullptr, "Current RPC agent is set!");
   } else {
@@ -263,7 +271,7 @@ void RpcAgent::setCurrentRpcAgent(std::shared_ptr<RpcAgent> rpcAgent) {
     // don't need to, as the only case that would trigger the assert is if we
     // replaced nullptr with nullptr, which we can just do as it has no effect.
     std::shared_ptr<RpcAgent> previousAgent =
-        std::atomic_exchange(&currentRpcAgent_, std::move(rpcAgent));
+        std::atomic_exchange(&getRefToCurrentRpcAgent(), std::move(rpcAgent));
     TORCH_INTERNAL_ASSERT(
         previousAgent != nullptr, "Current RPC agent is not set!");
   }
