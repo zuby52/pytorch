@@ -3190,30 +3190,6 @@ class DistributedDataParallelTest(MultiProcessTestCase):
             # Run backward
             output.mean().backward()
 
-    @requires_gloo()
-    def test_ddp_comm_hook_register_just_once(self):
-        """
-        DDP communication hook can only be registered once. This test validates whether
-        the error is thrown properly when register_comm_hook is called more than once.
-        """
-        store = c10d.FileStore(self.file_name, self.world_size)
-        process_group = c10d.ProcessGroupGloo(store, self.rank, self.world_size)
-
-        model = DistributedDataParallel(
-            TestDdpCommHook(),
-            process_group=process_group
-        )
-
-        def dummy_hook(state, bucket):
-            fut = torch.futures.Future()
-            fut.set_result(bucket.get_tensors())
-            return fut
-
-        model._register_comm_hook(None, dummy_hook)
-
-        with self.assertRaisesRegex(RuntimeError, "register_comm_hook can only be called once."):
-            model._register_comm_hook(None, dummy_hook)
-
 
 class ReducerModule(nn.Module):
     def __init__(self):

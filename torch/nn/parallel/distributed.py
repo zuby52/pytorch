@@ -636,8 +636,8 @@ class DistributedDataParallel(Module):
                              associated with the completion of c10d.ProcessGroupNCCL.work.
 
         .. warning ::
-            DDP communication hook can only be registered once and should be registered
-            before calling backward.
+            DDP communication hook be registered multiple times, but reducer must be done
+            with any prior gradient computations before registering a new hook.
 
         .. warning ::
             The torch.futures.Future object that hook returns should contain a result that
