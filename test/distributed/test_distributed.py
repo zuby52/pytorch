@@ -14,7 +14,8 @@ from torch.testing._internal.distributed.distributed_test import _DistTestBase, 
 from torch.testing._internal.common_distributed import (
     TEST_SKIPS,
     MultiProcessTestCase,
-    initialize_temp_directories
+    initialize_temp_directories,
+    cleanup_temp_dir
 )
 
 
@@ -67,6 +68,7 @@ if BACKEND == "gloo" or BACKEND == "nccl":
             self._fork_processes()
 
         def tearDown(self):
+            cleanup_temp_dir()
             super(MultiProcessTestCase, self).tearDown()
             super(TestDistBackend, self).tearDown()
 
