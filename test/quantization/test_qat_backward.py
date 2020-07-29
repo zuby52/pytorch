@@ -21,16 +21,15 @@ class TestQATBackward(TestCase):
 
     @given(quantize_forward=st.booleans(),
            quantize_backward=st.booleans(),
+           device=st.sampled_from(['cpu', 'cuda'] if torch.cuda.is_available() else ['cpu']),
            X=hu.tensor(shapes=hu.array_shapes(1, 5,),
                        qparams=hu.qparams(dtypes=torch.quint8)))
-    def test_forward_and_backward(self, quantize_forward, quantize_backward, X):
+    def test_forward_and_backward(self, quantize_forward, quantize_backward, device, X):
         r"""Tests the forward and backward path of the FakeQuantizeWithBackward module
         """
         def fake_quantize_tensor(X):
             scale, zero_point = torch._choose_qparams_per_tensor(X, reduce_range=False)
             return torch.fake_quantize_per_tensor_affine(X, scale, zero_point, 0, 255)
-
-        device = 'cpu'  # CUDA support to come in a future PR
 
         torch.manual_seed(TORCH_RANDOM_SEED)
         X, (_, _, torch_type) = X

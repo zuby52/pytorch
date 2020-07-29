@@ -550,13 +550,14 @@ class TestQuantizedTensor(TestCase):
     @given(X=hu.tensor(shapes=hu.array_shapes(min_dims=2, max_dims=4,
                                               min_side=1, max_side=10),
                        qparams=hu.qparams()),
-           reduce_range=st.booleans()
+           reduce_range=st.booleans(),
+           device=st.sampled_from(['cpu', 'cuda'] if torch.cuda.is_available() else ['cpu']),
            )
-    def test_choose_qparams(self, X, reduce_range):
+    def test_choose_qparams(self, X, reduce_range, device):
         X, (scale, zero_point, torch_type) = X
         X = torch.from_numpy(X)
         X_scale, X_zp = _calculate_dynamic_qparams(X, torch.quint8, reduce_range=reduce_range)
-        qparams = torch._choose_qparams_per_tensor(X, reduce_range)
+        qparams = torch._choose_qparams_per_tensor(X.to(device), reduce_range)
         np.testing.assert_array_almost_equal(X_scale, qparams[0], decimal=3)
         self.assertEqual(X_zp, qparams[1])
 
