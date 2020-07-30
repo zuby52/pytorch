@@ -15,12 +15,22 @@ from torch.testing._internal.common_distributed import (
     TEST_SKIPS,
     MultiProcessTestCase,
     initialize_temp_directories,
-    cleanup_temp_dir
+    cleanup_temp_dir,
 )
 
+CPP_EXTENSIONS_WARNING = """
+Ninja (https://ninja-build.org) must be available to run C++ extensions tests,
+but it could not be found. Install ninja with `pip install ninja`
+or `conda install ninja`.
+"""
+
+if not dist.is_available():
+    print("Distributed not available, skipping tests", file=sys.stderr)
+    sys.exit(0)
 
 BACKEND = os.environ["BACKEND"]
 INIT_METHOD = os.getenv("INIT_METHOD", "env://")
+
 
 def skip_if_no_ninja(func):
 

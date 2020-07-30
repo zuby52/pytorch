@@ -37,12 +37,6 @@ except ImportError:
 
 skipIfNoTorchVision = unittest.skipIf(not HAS_TORCHVISION, "no torchvision")
 
-CPP_EXTENSIONS_WARNING = """
-Ninja (https://ninja-build.org) must be available to run C++ extensions tests,
-but it could not be found. Install ninja with `pip install ninja`
-or `conda install ninja`.
-"""
-
 BACKEND = os.environ["BACKEND"]
 INIT_METHOD = os.getenv("INIT_METHOD", "env://")
 
@@ -116,11 +110,6 @@ def get_timeout(test_id):
         return CUSTOMIZED_TIMEOUT[test_name]
     else:
         return DEFAULT_TIMEOUT
-
-
-if not dist.is_available():
-    print("Distributed not available, skipping tests")
-    sys.exit(0)
 
 
 def require_backend(backends):
