@@ -162,16 +162,19 @@ void unpackQuantizedWeightsHelper(
     }
     at::Tensor unpacked_weight;
     c10::optional<at::Tensor> bias;
-    c10::optional<torch::List<int64_t>> stride, padding, dilation;
+    c10::optional<torch::List<int64_t>> stride, padding, dilation, output_padding;
     c10::optional<int64_t> groups;
+    c10::optional<int64_t> transpose;
 
     constexpr int64_t stride_idx = 2;
     constexpr int64_t padding_idx = 3;
     constexpr int64_t dilation_idx = 4;
     constexpr int64_t groups_idx = 5;
+    // legacy version doesn't have output_padding and transpose;
 
-    torch::List<int64_t> stride_int, padding_int, dilation_int;
+    torch::List<int64_t> stride_int, padding_int, dilation_int, output_padding_int;
     int64_t groups_int;
+    int64_t transpose_int;
 
     if (itr->second.isTuple()) {
       // Pre-unpacked weights. Comes from Conv/Linear weights which are
@@ -205,11 +208,16 @@ void unpackQuantizedWeightsHelper(
             for (; idx < 3 * kSpatialDim; ++idx) {
               dilation_int.emplace_back(longs[idx]);
             }
+            for (; idx < 4 * kSpatialDim; ++idx) {
+              output_padding_int.emplace_back(longs[idx]);
+            }
             groups_int = longs[idx];
+            transpose = longs[++idx];
 
             stride = stride_int;
             padding = padding_int;
             dilation = dilation_int;
+            output_padding = output_padding_int;
             groups = groups_int;
           } else {
             TORCH_CHECK(false, "Unsupported serialization version ", version);
@@ -338,6 +346,9 @@ void unpackQuantizedWeightsHelper(
       conv_ints_args.push_back(stride);
       conv_ints_args.push_back(padding);
       conv_ints_args.push_back(dilation);
+      if (output_padding.has_value()) {
+        conv_ints_args.push_back(output_padding);
+      }
       const size_t arg_offset = 3;
       for (size_t i = 0; i < conv_ints_args.size(); ++i) {
         Node* ints_node =

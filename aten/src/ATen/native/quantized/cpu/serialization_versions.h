@@ -50,7 +50,9 @@ using SerializationType = std::tuple<
  *    2. stride x kSpatialDim
  *    3. padding x kSpatialDim
  *    4. dilation x kSpatialDim
+ *    5. output_padding x kSpatialDim
  *    5. groups
+ *    6. transpose
  */
 const std::string kConvName = "conv";
 constexpr int64_t kConvPackedParamsSerializationVersion = 2;
@@ -82,7 +84,11 @@ SerializationType serialize_conv(
   auto dilation = params->dilation().vec();
   longs.insert(longs.end(), dilation.begin(), dilation.end());
 
+  auto output_padding = params->output_padding().vec();
+  longs.insert(longs.end(), output_padding.begin(), output_padding.end());
+
   longs.push_back(params->groups());
+  longs.push_back(params->transpose());
 
 
   return std::make_tuple(
@@ -109,8 +115,9 @@ c10::intrusive_ptr<ConvPackedParamsBase<kSpatialDim>> deserialize_conv(
 
   at::Tensor weight;
   c10::optional<at::Tensor> bias;
-  torch::List<int64_t> stride, padding, dilation;
+  torch::List<int64_t> stride, padding, dilation, output_padding;
   int64_t groups;
+  bool transpose;
 
   weight = non_optional[0];
   bias = optional[0];
@@ -125,7 +132,11 @@ c10::intrusive_ptr<ConvPackedParamsBase<kSpatialDim>> deserialize_conv(
   for (; idx < 3 * kSpatialDim; ++idx) {
     dilation.emplace_back(longs[idx]);
   }
+  for (; idx < 4 * kSpatialDim; ++idx) {
+    output_padding.emplace_back(longs[idx]);
+  }
   groups = longs[idx];
+  transpose = bool(longs[++idx]);
 
 auto& ctx = at::globalContext();
 
@@ -136,8 +147,10 @@ auto& ctx = at::globalContext();
       bias,
       stride,
       padding,
+      output_padding,
       dilation,
-      groups
+      groups,
+      transpose
     );
   }
 #endif // USE_FBGEMM
@@ -152,8 +165,10 @@ auto& ctx = at::globalContext();
       bias,
       stride,
       padding,
+      output_padding,
       dilation,
-      groups
+      groups,
+      transpose
     );
   }
 #endif // USE_PYTORCH_QNNPACK
