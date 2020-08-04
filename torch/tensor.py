@@ -647,25 +647,36 @@ class Tensor(torch._C._TensorBase):
             [name for name in names if not is_ellipsis(name)],
             ellipsis_idx)
 
-    def unflatten(self, dim, namedshape):
-        r"""Unflattens the named dimension :attr:`dim`, viewing it in the shape
-        specified by :attr:`namedshape`.
+    def unflatten(self, dim, sizes):
+        r"""Expands the dimension :attr:`dim` of the :attr:`self` tensor over multiple dimensions
+        of sizes given by :attr:`sizes`.
+
+        * :attr:`sizes` is the new shape of the unflattened dimension and it can be a `namedshape` 
+          (iterable of ``(name, size)`` tuples) if :attr:`self` is `NamedTensor` or a `tuple` of
+          ints as well as `torch.Size`. The total number of elements in sizes must match the number 
+          of elements in the original dim being unflattened.
 
         Arguments:
-            namedshape: (iterable of ``(name, size)`` tuples).
+            dim (Union[str, int]): Dimension to unflatten
+            sizes (Union[Iterable[Tuple[str, int]], torch.Size]): New shape of the unflattened dimension
 
-        Examples::
+        Examples:
+            >>> torch.randn(3, 4, 1).unflatten(1, (2, 2)).shape
+            torch.Size([3, 2, 2, 1])
+            >>> torch.randn(2, 4, names=('A', 'B')).unflatten('B', (('B1', 2), ('B2', 2)))
+            tensor([[[-1.1772,  0.0180],
+                    [ 0.2412,  0.1431]],
 
-            >>> flat_imgs = torch.rand(32, 3 * 128 * 128, names=('N', 'features'))
-            >>> imgs = flat_imgs.unflatten('features', (('C', 3), ('H', 128), ('W', 128)))
-            >>> imgs.names, imgs.shape
-            (('N', 'C', 'H', 'W'), torch.Size([32, 3, 128, 128]))
+                    [[-1.1819, -0.8899],
+                    [ 1.5813,  0.2274]]], names=('A', 'B1', 'B2'))
 
         .. warning::
             The named tensor API is experimental and subject to change.
-
         """
-        names, sizes = unzip_namedshape(namedshape)
+        names = None
+        if not (isinstance(sizes, torch.Size) or
+                (isinstance(sizes, tuple) and len(sizes) > 0 and isinstance(sizes[0], int))):
+            names, sizes = unzip_namedshape(sizes)
         return super(Tensor, self).unflatten(dim, sizes, names)
 
     def rename_(self, *names, **rename_map):
