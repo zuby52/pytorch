@@ -76,6 +76,16 @@ struct Shader final {
     std::unique_ptr<Compiler> compiler_;
   };
 
+  struct WorkGroup final {
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+
+    inline bool operator==(const WorkGroup& work_group) const {
+      return (x == work_group.x) && (y == work_group.y) && (z == work_group.z);
+    }
+  };
+
   typedef api::Cache<Factory> Cache;
 };
 
